@@ -170,45 +170,45 @@ class Media {
   public serviceId?: number | null;
 
   @Column({ nullable: true, type: 'int' })
-  public serviceIdAlt?: number | null;
+  public serviceId4k?: number | null;
 
   @Column({ nullable: true, type: 'int' })
   public externalServiceId?: number | null;
 
   @Column({ nullable: true, type: 'int' })
-  public externalServiceIdAlt?: number | null;
+  public externalServiceId4k?: number | null;
 
   @Column({ nullable: true, type: 'varchar' })
   public externalServiceSlug?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
-  public externalServiceSlugAlt?: string | null;
+  public externalServiceSlug4k?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
   public ratingKey?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
-  public ratingKeyAlt?: string | null;
+  public ratingKey4k?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
   public jellyfinMediaId?: string | null;
 
   @Column({ nullable: true, type: 'varchar' })
-  public jellyfinMediaIdAlt?: string | null;
+  public jellyfinMediaId4k?: string | null;
 
   public serviceUrl?: string;
-  public serviceUrlAlt?: string;
+  public serviceUrl4k?: string;
   public downloadStatus?: DownloadingItem[] = [];
-  public downloadStatusAlt?: DownloadingItem[] = [];
+  public downloadStatus4k?: DownloadingItem[] = [];
 
   public mediaUrl?: string;
-  public mediaUrlAlt?: string;
+  public mediaUrl4k?: string;
 
   public iOSPlexUrl?: string;
-  public iOSPlexUrlAlt?: string;
+  public iOSPlexUrl4k?: string;
 
   public tautulliUrl?: string;
-  public tautulliUrlAlt?: string;
+  public tautulliUrl4k?: string;
 
   constructor(init?: Partial<Media>) {
     Object.assign(this, init);
@@ -254,17 +254,17 @@ class Media {
           this.tautulliUrl = `${tautulliUrl}/info?rating_key=${this.ratingKey}`;
         }
 
-        if (this.ratingKeyAlt) {
-          this.mediaUrlAlt = `${
+        if (this.ratingKey4k) {
+          this.mediaUrl4k = `${
             webAppUrl ? webAppUrl : 'https://app.plex.tv/desktop'
           }#!/server/${machineId}/details?key=%2Flibrary%2Fmetadata%2F${
-            this.ratingKeyAlt
+            this.ratingKey4k
           }`;
 
-          this.iOSPlexUrlAlt = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKeyAlt}&server=${machineId}`;
+          this.iOSPlexUrl4k = `plex://preplay/?metadataKey=%2Flibrary%2Fmetadata%2F${this.ratingKey4k}&server=${machineId}`;
 
           if (tautulliUrl) {
-            this.tautulliUrlAlt = `${tautulliUrl}/info?rating_key=${this.ratingKeyAlt}`;
+            this.tautulliUrl4k = `${tautulliUrl}/info?rating_key=${this.ratingKey4k}`;
           }
         }
       }
@@ -282,8 +282,8 @@ class Media {
       if (this.jellyfinMediaId) {
         this.mediaUrl = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId}&context=home&serverId=${serverId}`;
       }
-      if (this.jellyfinMediaIdAlt) {
-        this.mediaUrlAlt = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaIdAlt}&context=home&serverId=${serverId}`;
+      if (this.jellyfinMediaId4k) {
+        this.mediaUrl4k = `${jellyfinHost}/web/index.html#!/${pageName}?id=${this.jellyfinMediaId4k}&context=home&serverId=${serverId}`;
       }
     }
   }
@@ -304,18 +304,18 @@ class Media {
         }
       }
 
-      if (this.serviceIdAlt !== null && this.externalServiceSlugAlt !== null) {
+      if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
         const settings = getSettings();
         const server = settings.radarr.find(
-          (radarr) => radarr.id === this.serviceIdAlt
+          (radarr) => radarr.id === this.serviceId4k
         );
 
         if (server) {
-          this.serviceUrlAlt = server.externalUrl
-            ? `${server.externalUrl}/movie/${this.externalServiceSlugAlt}`
+          this.serviceUrl4k = server.externalUrl
+            ? `${server.externalUrl}/movie/${this.externalServiceSlug4k}`
             : RadarrAPI.buildUrl(
                 server,
-                `/movie/${this.externalServiceSlugAlt}`
+                `/movie/${this.externalServiceSlug4k}`
               );
         }
       }
@@ -335,18 +335,18 @@ class Media {
         }
       }
 
-      if (this.serviceIdAlt !== null && this.externalServiceSlugAlt !== null) {
+      if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
         const settings = getSettings();
         const server = settings.sonarr.find(
-          (sonarr) => sonarr.id === this.serviceIdAlt
+          (sonarr) => sonarr.id === this.serviceId4k
         );
 
         if (server) {
-          this.serviceUrlAlt = server.externalUrl
-            ? `${server.externalUrl}/series/${this.externalServiceSlugAlt}`
+          this.serviceUrl4k = server.externalUrl
+            ? `${server.externalUrl}/series/${this.externalServiceSlug4k}`
             : SonarrAPI.buildUrl(
                 server,
-                `/series/${this.externalServiceSlugAlt}`
+                `/series/${this.externalServiceSlug4k}`
               );
         }
       }
@@ -366,18 +366,18 @@ class Media {
         }
       }
 
-      if (this.serviceIdAlt !== null && this.externalServiceSlugAlt !== null) {
+      if (this.serviceId4k !== null && this.externalServiceSlug4k !== null) {
         const settings = getSettings();
         const server = settings.readarr.find(
-          (readarr) => readarr.id === this.serviceIdAlt
+          (readarr) => readarr.id === this.serviceId4k
         );
 
         if (server) {
-          this.serviceUrlAlt = server.externalUrl
-            ? `${server.externalUrl}/book/${this.externalServiceSlugAlt}`
+          this.serviceUrl4k = server.externalUrl
+            ? `${server.externalUrl}/book/${this.externalServiceSlug4k}`
             : ReadarrAPI.buildUrl(
                 server,
-                `/book/${this.externalServiceSlugAlt}`
+                `/book/${this.externalServiceSlug4k}`
               );
         }
       }
@@ -400,14 +400,14 @@ class Media {
       }
 
       if (
-        this.externalServiceIdAlt !== undefined &&
-        this.externalServiceIdAlt !== null &&
-        this.serviceIdAlt !== undefined &&
-        this.serviceIdAlt !== null
+        this.externalServiceId4k !== undefined &&
+        this.externalServiceId4k !== null &&
+        this.serviceId4k !== undefined &&
+        this.serviceId4k !== null
       ) {
-        this.downloadStatusAlt = downloadTracker.getMovieProgress(
-          this.serviceIdAlt,
-          this.externalServiceIdAlt
+        this.downloadStatus4k = downloadTracker.getMovieProgress(
+          this.serviceId4k,
+          this.externalServiceId4k
         );
       }
     }
@@ -426,14 +426,14 @@ class Media {
       }
 
       if (
-        this.externalServiceIdAlt !== undefined &&
-        this.externalServiceIdAlt !== null &&
-        this.serviceIdAlt !== undefined &&
-        this.serviceIdAlt !== null
+        this.externalServiceId4k !== undefined &&
+        this.externalServiceId4k !== null &&
+        this.serviceId4k !== undefined &&
+        this.serviceId4k !== null
       ) {
-        this.downloadStatusAlt = downloadTracker.getSeriesProgress(
-          this.serviceIdAlt,
-          this.externalServiceIdAlt
+        this.downloadStatus4k = downloadTracker.getSeriesProgress(
+          this.serviceId4k,
+          this.externalServiceId4k
         );
       }
     }
@@ -452,14 +452,14 @@ class Media {
       }
 
       if (
-        this.externalServiceIdAlt !== undefined &&
-        this.externalServiceIdAlt !== null &&
-        this.serviceIdAlt !== undefined &&
-        this.serviceIdAlt !== null
+        this.externalServiceId4k !== undefined &&
+        this.externalServiceId4k !== null &&
+        this.serviceId4k !== undefined &&
+        this.serviceId4k !== null
       ) {
-        this.downloadStatusAlt = downloadTracker.getBookProgress(
-          this.serviceIdAlt,
-          this.externalServiceIdAlt
+        this.downloadStatus4k = downloadTracker.getBookProgress(
+          this.serviceId4k,
+          this.externalServiceId4k
         );
       }
     }

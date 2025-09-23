@@ -82,8 +82,8 @@ export class MediaRequest {
     if (
       requestBody.mediaType === MediaType.MOVIE &&
       !requestUser.hasPermission(
-        requestBody.isAlt
-          ? [Permission.REQUEST_ALT, Permission.REQUEST_4K_MOVIE]
+        requestBody.is4k
+          ? [Permission.REQUEST_4K, Permission.REQUEST_4K_MOVIE]
           : [Permission.REQUEST, Permission.REQUEST_MOVIE],
         {
           type: 'or',
@@ -92,14 +92,14 @@ export class MediaRequest {
     ) {
       throw new RequestPermissionError(
         `You do not have permission to make ${
-          requestBody.isAlt ? '4K ' : ''
+          requestBody.is4k ? '4K ' : ''
         }movie requests.`
       );
     } else if (
       requestBody.mediaType === MediaType.TV &&
       !requestUser.hasPermission(
-        requestBody.isAlt
-          ? [Permission.REQUEST_ALT, Permission.REQUEST_4K_TV]
+        requestBody.is4k
+          ? [Permission.REQUEST_4K, Permission.REQUEST_4K_TV]
           : [Permission.REQUEST, Permission.REQUEST_TV],
         {
           type: 'or',
@@ -108,14 +108,14 @@ export class MediaRequest {
     ) {
       throw new RequestPermissionError(
         `You do not have permission to make ${
-          requestBody.isAlt ? '4K ' : ''
+          requestBody.is4k ? '4K ' : ''
         }series requests.`
       );
     } else if (
       requestBody.mediaType === MediaType.BOOK &&
       !requestUser.hasPermission(
-        requestBody.isAlt
-          ? [Permission.REQUEST_ALT, Permission.REQUEST_AUDIO_BOOK]
+        requestBody.is4k
+          ? [Permission.REQUEST_4K, Permission.REQUEST_AUDIO_BOOK]
           : [Permission.REQUEST, Permission.REQUEST_BOOK],
         {
           type: 'or',
@@ -124,7 +124,7 @@ export class MediaRequest {
     ) {
       throw new RequestPermissionError(
         `You do not have permission to make ${
-          requestBody.isAlt ? 'audio' : ''
+          requestBody.is4k ? 'audio' : ''
         }book requests.`
       );
     }
@@ -146,8 +146,8 @@ export class MediaRequest {
       requestBody.mediaType === MediaType.MOVIE
         ? await tmdb.getMovie({ movieId: requestBody.mediaId })
         : requestBody.mediaType === MediaType.BOOK
-        ? await hardcover.getBook(requestBody.mediaId)
-        : await tmdb.getTvShow({ tvId: requestBody.mediaId });
+          ? await hardcover.getBook(requestBody.mediaId)
+          : await tmdb.getTvShow({ tvId: requestBody.mediaId });
 
     const key = requestBody.mediaType === 'book' ? 'hcId' : 'tmdbId';
     let media = await mediaRepository.findOne({
@@ -164,10 +164,8 @@ export class MediaRequest {
         ...(!isBookDetails(mediaDetails) && {
           tvdbId: requestBody.tvdbId ?? mediaDetails.external_ids.tvdb_id,
         }),
-        status: !requestBody.isAlt ? MediaStatus.PENDING : MediaStatus.UNKNOWN,
-        status4k: requestBody.isAlt
-          ? MediaStatus.PENDING
-          : MediaStatus.UNKNOWN,
+        status: !requestBody.is4k ? MediaStatus.PENDING : MediaStatus.UNKNOWN,
+        status4k: requestBody.is4k ? MediaStatus.PENDING : MediaStatus.UNKNOWN,
         mediaType: requestBody.mediaType,
       });
     } else {
@@ -186,7 +184,7 @@ export class MediaRequest {
           requestBody.mediaType === MediaType.MOVIE ||
           requestBody.mediaType === MediaType.TV) &&
         media.status === MediaStatus.UNKNOWN &&
-        !requestBody.isAlt
+        !requestBody.is4k
       ) {
         media.status = MediaStatus.PENDING;
       }
@@ -196,7 +194,7 @@ export class MediaRequest {
           requestBody.mediaType === MediaType.MOVIE ||
           requestBody.mediaType === MediaType.TV) &&
         media.status4k === MediaStatus.UNKNOWN &&
-        requestBody.isAlt
+        requestBody.is4k
       ) {
         media.status4k = MediaStatus.PENDING;
       }
@@ -206,7 +204,7 @@ export class MediaRequest {
       .createQueryBuilder('request')
       .leftJoin('request.media', 'media')
       .leftJoinAndSelect('request.requestedBy', 'user')
-      .where('request.isAlt = :isAlt', { isAlt: requestBody.isAlt })
+      .where('request.is4k = :is4k', { is4k: requestBody.is4k })
       .andWhere(`media.${key} = :mediaId`, { mediaId: mediaDetails.id })
       .andWhere('media.mediaType = :mediaType', {
         mediaType: requestBody.mediaType,
@@ -224,7 +222,7 @@ export class MediaRequest {
         logger.warn('Duplicate request for media blocked', {
           [key]: mediaDetails.id,
           mediaType: requestBody.mediaType,
-          isAlt: requestBody.isAlt,
+          is4k: requestBody.is4k,
           label: 'Media Request',
         });
 
@@ -257,13 +255,13 @@ export class MediaRequest {
     let metadataProfileId = requestBody.metadataProfileId;
 
     if (useOverrides) {
-      const defaultRadarrId = requestBody.isAlt
+      const defaultRadarrId = requestBody.is4k
         ? settings.radarr.findIndex((r) => r.is4k && r.isDefault)
         : settings.radarr.findIndex((r) => !r.is4k && r.isDefault);
-      const defaultSonarrId = requestBody.isAlt
+      const defaultSonarrId = requestBody.is4k
         ? settings.sonarr.findIndex((s) => s.is4k && s.isDefault)
         : settings.sonarr.findIndex((s) => !s.is4k && s.isDefault);
-      const defaultReadarrId = requestBody.isAlt
+      const defaultReadarrId = requestBody.is4k
         ? settings.readarr.findIndex((r) => r.isAudio && r.isDefault)
         : settings.readarr.findIndex((r) => !r.isAudio && r.isDefault);
 
@@ -273,8 +271,8 @@ export class MediaRequest {
           requestBody.mediaType === MediaType.MOVIE
             ? { radarrServiceId: defaultRadarrId }
             : requestBody.mediaType === MediaType.BOOK
-            ? { readarrServiceId: defaultReadarrId }
-            : { sonarrServiceId: defaultSonarrId },
+              ? { readarrServiceId: defaultReadarrId }
+              : { sonarrServiceId: defaultSonarrId },
       });
 
       const appliedOverrideRules = overrideRules.filter((rule) => {
@@ -402,10 +400,10 @@ export class MediaRequest {
         // If the user is an admin or has the "auto approve" permission, automatically approve the request
         status: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_4K_MOVIE
               : Permission.AUTO_APPROVE_MOVIE,
             Permission.MANAGE_REQUESTS,
@@ -416,10 +414,10 @@ export class MediaRequest {
           : MediaRequestStatus.PENDING,
         modifiedBy: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_4K_MOVIE
               : Permission.AUTO_APPROVE_MOVIE,
             Permission.MANAGE_REQUESTS,
@@ -428,7 +426,7 @@ export class MediaRequest {
         )
           ? user
           : undefined,
-        isAlt: requestBody.isAlt,
+        is4k: requestBody.is4k,
         serverId: requestBody.serverId,
         profileId: profileId,
         rootFolder: rootFolder,
@@ -448,10 +446,10 @@ export class MediaRequest {
         // If the user is an admin or has the "auto approve" permission, automatically approve the request
         status: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_AUDIO_BOOK
               : Permission.AUTO_APPROVE_BOOK,
             Permission.MANAGE_REQUESTS,
@@ -462,10 +460,10 @@ export class MediaRequest {
           : MediaRequestStatus.PENDING,
         modifiedBy: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_AUDIO_BOOK
               : Permission.AUTO_APPROVE_BOOK,
             Permission.MANAGE_REQUESTS,
@@ -474,7 +472,7 @@ export class MediaRequest {
         )
           ? user
           : undefined,
-        isAlt: requestBody.isAlt,
+        is4k: requestBody.is4k,
         serverId: requestBody.serverId,
         profileId: profileId,
         metadataProfileId: metadataProfileId,
@@ -508,7 +506,7 @@ export class MediaRequest {
         existingSeasons = media.requests
           .filter(
             (request) =>
-              request.isAlt === requestBody.isAlt &&
+              request.is4k === requestBody.is4k &&
               request.status !== MediaRequestStatus.DECLINED &&
               request.status !== MediaRequestStatus.COMPLETED
           )
@@ -528,9 +526,9 @@ export class MediaRequest {
           ...media.seasons
             .filter(
               (season) =>
-                season[requestBody.isAlt ? 'status4k' : 'status'] !==
+                season[requestBody.is4k ? 'status4k' : 'status'] !==
                   MediaStatus.UNKNOWN &&
-                season[requestBody.isAlt ? 'status4k' : 'status'] !==
+                season[requestBody.is4k ? 'status4k' : 'status'] !==
                   MediaStatus.DELETED
             )
             .map((season) => season.seasonNumber),
@@ -559,10 +557,10 @@ export class MediaRequest {
         // If the user is an admin or has the "auto approve" permission, automatically approve the request
         status: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_4K_TV
               : Permission.AUTO_APPROVE_TV,
             Permission.MANAGE_REQUESTS,
@@ -573,10 +571,10 @@ export class MediaRequest {
           : MediaRequestStatus.PENDING,
         modifiedBy: user.hasPermission(
           [
-            requestBody.isAlt
-              ? Permission.AUTO_APPROVE_ALT
+            requestBody.is4k
+              ? Permission.AUTO_APPROVE_4K
               : Permission.AUTO_APPROVE,
-            requestBody.isAlt
+            requestBody.is4k
               ? Permission.AUTO_APPROVE_4K_TV
               : Permission.AUTO_APPROVE_TV,
             Permission.MANAGE_REQUESTS,
@@ -585,7 +583,7 @@ export class MediaRequest {
         )
           ? user
           : undefined,
-        isAlt: requestBody.isAlt,
+        is4k: requestBody.is4k,
         serverId: requestBody.serverId,
         profileId: profileId,
         rootFolder: rootFolder,
@@ -597,10 +595,10 @@ export class MediaRequest {
               seasonNumber: sn,
               status: user.hasPermission(
                 [
-                  requestBody.isAlt
-                    ? Permission.AUTO_APPROVE_ALT
+                  requestBody.is4k
+                    ? Permission.AUTO_APPROVE_4K
                     : Permission.AUTO_APPROVE,
-                  requestBody.isAlt
+                  requestBody.is4k
                     ? Permission.AUTO_APPROVE_4K_TV
                     : Permission.AUTO_APPROVE_TV,
                   Permission.MANAGE_REQUESTS,
@@ -672,7 +670,7 @@ export class MediaRequest {
   public seasons: SeasonRequest[];
 
   @Column({ default: false })
-  public isAlt: boolean;
+  public is4k: boolean;
 
   @Column({ nullable: true })
   public serverId: number;
@@ -780,9 +778,7 @@ export class MediaRequest {
         return;
       }
 
-      if (
-        media[this.isAlt ? 'status4k' : 'status'] === MediaStatus.AVAILABLE
-      ) {
+      if (media[this.is4k ? 'status4k' : 'status'] === MediaStatus.AVAILABLE) {
         logger.warn(
           'Media became available before request was approved. Skipping approval notification',
           { label: 'Media Request', requestId: this.id, mediaId: this.media.id }
@@ -841,8 +837,8 @@ export class MediaRequest {
         entity.type === MediaType.MOVIE
           ? 'Movie'
           : entity.type === MediaType.TV
-          ? 'Series'
-          : 'Book';
+            ? 'Series'
+            : 'Book';
       let event: string | undefined;
       let notifyAdmin = true;
       let notifySystem = true;
@@ -850,7 +846,7 @@ export class MediaRequest {
       switch (type) {
         case Notification.MEDIA_APPROVED:
           event = `${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio'
                 : '4K '
@@ -860,7 +856,7 @@ export class MediaRequest {
           break;
         case Notification.MEDIA_DECLINED:
           event = `${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio'
                 : '4K '
@@ -870,7 +866,7 @@ export class MediaRequest {
           break;
         case Notification.MEDIA_PENDING:
           event = `New ${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio'
                 : '4K '
@@ -879,7 +875,7 @@ export class MediaRequest {
           break;
         case Notification.MEDIA_AUTO_REQUESTED:
           event = `${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio '
                 : '4K '
@@ -890,7 +886,7 @@ export class MediaRequest {
           break;
         case Notification.MEDIA_AUTO_APPROVED:
           event = `${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio'
                 : '4K '
@@ -899,7 +895,7 @@ export class MediaRequest {
           break;
         case Notification.MEDIA_FAILED:
           event = `${
-            entity.isAlt
+            entity.is4k
               ? entity.type === MediaType.BOOK
                 ? 'Audio '
                 : '4K '
