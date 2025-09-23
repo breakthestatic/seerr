@@ -1,5 +1,7 @@
+import BookRequestModal from '@app/components/RequestModal/BookRequestModal';
 import CollectionRequestModal from '@app/components/RequestModal/CollectionRequestModal';
 import MovieRequestModal from '@app/components/RequestModal/MovieRequestModal';
+import SeriesRequestModal from '@app/components/RequestModal/SeriesRequestModal';
 import TvRequestModal from '@app/components/RequestModal/TvRequestModal';
 import { Transition } from '@headlessui/react';
 import type { MediaStatus } from '@server/constants/media';
@@ -8,8 +10,8 @@ import type { NonFunctionProperties } from '@server/interfaces/api/common';
 
 interface RequestModalProps {
   show: boolean;
-  type: 'movie' | 'tv' | 'collection';
-  tmdbId: number;
+  type: 'movie' | 'tv' | 'book' | 'collection' | 'series';
+  mediaId?: number;
   is4k?: boolean;
   editRequest?: NonFunctionProperties<MediaRequest>;
   onComplete?: (newStatus: MediaStatus) => void;
@@ -20,7 +22,7 @@ interface RequestModalProps {
 const RequestModal = ({
   type,
   show,
-  tmdbId,
+  mediaId,
   is4k,
   editRequest,
   onComplete,
@@ -42,7 +44,7 @@ const RequestModal = ({
         <MovieRequestModal
           onComplete={onComplete}
           onCancel={onCancel}
-          tmdbId={tmdbId}
+          tmdbId={mediaId}
           onUpdating={onUpdating}
           is4k={is4k}
           editRequest={editRequest}
@@ -51,16 +53,33 @@ const RequestModal = ({
         <TvRequestModal
           onComplete={onComplete}
           onCancel={onCancel}
-          tmdbId={tmdbId}
+          tmdbId={mediaId}
           onUpdating={onUpdating}
           is4k={is4k}
           editRequest={editRequest}
+        />
+      ) : type === 'book' ? (
+        <BookRequestModal
+          onComplete={onComplete}
+          onCancel={onCancel}
+          hcId={mediaId}
+          onUpdating={onUpdating}
+          isAudio={is4k}
+          editRequest={editRequest}
+        />
+      ) : type === 'series' ? (
+        <SeriesRequestModal
+          onComplete={onComplete}
+          onCancel={onCancel}
+          seriesId={mediaId}
+          onUpdating={onUpdating}
+          isAudio={is4k}
         />
       ) : (
         <CollectionRequestModal
           onComplete={onComplete}
           onCancel={onCancel}
-          tmdbId={tmdbId}
+          tmdbId={mediaId}
           onUpdating={onUpdating}
           is4k={is4k}
         />
