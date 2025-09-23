@@ -48,25 +48,25 @@ const classNames = (...classes: string[]) => {
 };
 
 interface CreateIssueModalProps {
-  mediaType: 'movie' | 'tv';
-  tmdbId?: number;
+  mediaType: 'movie' | 'tv' | 'book';
+  mediaId?: number;
   onCancel?: () => void;
 }
 
 const CreateIssueModal = ({
   onCancel,
   mediaType,
-  tmdbId,
+  mediaId,
 }: CreateIssueModalProps) => {
   const intl = useIntl();
   const settings = useSettings();
   const { hasPermission } = useUser();
   const { addToast } = useToasts();
   const { data, error } = useSWR<MovieDetails | TvDetails>(
-    tmdbId ? `/api/v1/${mediaType}/${tmdbId}` : null
+    mediaId ? `/api/v1/${mediaType}/${mediaId}` : null
   );
 
-  if (!tmdbId) {
+  if (!mediaId) {
     return null;
   }
 
@@ -157,7 +157,8 @@ const CreateIssueModal = ({
             onOk={() => handleSubmit()}
             okText={intl.formatMessage(messages.submitissue)}
             loading={!data && !error}
-            backdrop={`https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data?.backdropPath}`}
+            backdrop={data?.backdropPath}
+            cache={mediaType === 'book' ? 'hardcover' : 'tmdb'}
           >
             {mediaType === 'tv' && data && !isMovie(data) && (
               <>
