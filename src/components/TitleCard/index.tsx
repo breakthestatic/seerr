@@ -41,6 +41,7 @@ interface TitleCardProps {
   status?: MediaStatus;
   canExpand?: boolean;
   inProgress?: boolean;
+  position?: number;
   isAddedToWatchlist?: number | boolean;
   mutateParent?: () => void;
 }
@@ -65,6 +66,7 @@ const TitleCard = ({
   mediaType,
   isAddedToWatchlist = false,
   inProgress = false,
+  position,
   canExpand = false,
   mutateParent,
 }: TitleCardProps) => {
@@ -174,7 +176,7 @@ const TitleCard = ({
     if (topNode) {
       try {
         await axios.post('/api/v1/blocklist', {
-          tmdbId: id,
+          externalId: id,
           mediaType,
           title,
           user: user?.id,
@@ -223,7 +225,7 @@ const TitleCard = ({
     const topNode = cardRef.current;
 
     if (topNode) {
-      const res = await axios.delete('/api/v1/blocklist/' + id);
+      const res = await axios.delete(`/api/v1/blocklist/${mediaType}/${id}`);
 
       if (res.status === 204) {
         addToast(
@@ -257,7 +259,9 @@ const TitleCard = ({
   const showRequestButton = hasPermission(
     [
       Permission.REQUEST,
-      mediaType === 'movie' || mediaType === 'collection'
+      mediaType === 'movie' ||
+      mediaType === 'collection' ||
+      mediaType === 'book'
         ? Permission.REQUEST_MOVIE
         : Permission.REQUEST_TV,
     ],
@@ -275,27 +279,31 @@ const TitleCard = ({
       ref={cardRef}
     >
       <RequestModal
-        tmdbId={id}
+        mediaId={id}
         show={showRequestModal}
         type={
           mediaType === 'movie'
             ? 'movie'
             : mediaType === 'collection'
               ? 'collection'
-              : 'tv'
+              : mediaType === 'book'
+                ? 'book'
+                : 'tv'
         }
         onComplete={requestComplete}
         onUpdating={requestUpdating}
         onCancel={closeModal}
       />
       <BlocklistModal
-        tmdbId={id}
+        externalId={id}
         type={
           mediaType === 'movie'
             ? 'movie'
             : mediaType === 'collection'
               ? 'collection'
-              : 'tv'
+              : mediaType === 'book'
+                ? 'book'
+                : 'tv'
         }
         show={showBlocklistModal}
         onCancel={closeBlocklistModal}
@@ -327,14 +335,36 @@ const TitleCard = ({
         tabIndex={0}
       >
         <div className="absolute inset-0 h-full w-full overflow-hidden">
+          {mediaType === 'book' && position && (
+            <Transition
+              as={Fragment}
+              show={!showDetail}
+              enter="transition-opacity"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <span className="absolute bottom-0 right-0 z-10 rounded-br-[6px] rounded-tl-lg border-indigo-500 bg-indigo-600 px-2 py-1 text-sm font-bold text-white">
+                {`#${position}`}
+              </span>
+            </Transition>
+          )}
           <CachedImage
-            type="tmdb"
+            type={mediaType === 'book' ? 'hardcover' : 'tmdb'}
             className="absolute inset-0 h-full w-full"
             alt=""
             src={
-              image
-                ? `https://image.tmdb.org/t/p/w300_and_h450_face${image}`
-                : `/images/seerr_poster_not_found_logo_top.png`
+              mediaType === 'book'
+                ? image
+                  ? `${image}`
+                  : `https://assets.hardcover.app/static/covers/cover${
+                      (id % 9) + 1
+                    }.png`
+                : image
+                  ? `https://image.tmdb.org/t/p/w300_and_h450_face${image}`
+                  : `/images/seerr_poster_not_found_logo_top.png`
             }
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
@@ -344,7 +374,9 @@ const TitleCard = ({
               className={`pointer-events-none z-40 self-start rounded-full border shadow-md ${
                 mediaType === 'movie' || mediaType === 'collection'
                   ? 'border-blue-500 bg-blue-600/80'
-                  : 'border-purple-600 bg-purple-600/80'
+                  : mediaType === 'book'
+                    ? 'border-red-500 bg-red-600/80'
+                    : 'border-purple-600 bg-purple-600/80'
               }`}
             >
               <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-white sm:h-5">
@@ -352,46 +384,50 @@ const TitleCard = ({
                   ? intl.formatMessage(globalMessages.movie)
                   : mediaType === 'collection'
                     ? intl.formatMessage(globalMessages.collection)
-                    : intl.formatMessage(globalMessages.tvshow)}
+                    : mediaType === 'book'
+                      ? intl.formatMessage(globalMessages.book)
+                      : intl.formatMessage(globalMessages.tvshow)}
               </div>
             </div>
-            {showDetail && currentStatus !== MediaStatus.BLOCKLISTED && (
-              <div className="flex flex-col gap-1">
-                {user?.userType !== UserType.PLEX &&
-                  (toggleWatchlist ? (
-                    <Button
-                      buttonType={'ghost'}
-                      className="z-40"
-                      buttonSize={'sm'}
-                      onClick={onClickWatchlistBtn}
-                    >
-                      <StarIcon className={'h-3 text-amber-300'} />
-                    </Button>
-                  ) : (
-                    <Button
-                      className="z-40"
-                      buttonSize={'sm'}
-                      onClick={onClickDeleteWatchlistBtn}
-                    >
-                      <MinusCircleIcon className={'h-3'} />
-                    </Button>
-                  ))}
-                {showHideButton &&
-                  currentStatus !== MediaStatus.PROCESSING &&
-                  currentStatus !== MediaStatus.AVAILABLE &&
-                  currentStatus !== MediaStatus.PARTIALLY_AVAILABLE &&
-                  currentStatus !== MediaStatus.PENDING && (
-                    <Button
-                      buttonType={'ghost'}
-                      className="z-40"
-                      buttonSize={'sm'}
-                      onClick={() => setShowBlocklistModal(true)}
-                    >
-                      <EyeSlashIcon className={'h-3'} />
-                    </Button>
-                  )}
-              </div>
-            )}
+            {showDetail &&
+              currentStatus !== MediaStatus.BLOCKLISTED &&
+              mediaType !== 'book' && (
+                <div className="flex flex-col gap-1">
+                  {user?.userType !== UserType.PLEX &&
+                    (toggleWatchlist ? (
+                      <Button
+                        buttonType={'ghost'}
+                        className="z-40"
+                        buttonSize={'sm'}
+                        onClick={onClickWatchlistBtn}
+                      >
+                        <StarIcon className={'h-3 text-amber-300'} />
+                      </Button>
+                    ) : (
+                      <Button
+                        className="z-40"
+                        buttonSize={'sm'}
+                        onClick={onClickDeleteWatchlistBtn}
+                      >
+                        <MinusCircleIcon className={'h-3'} />
+                      </Button>
+                    ))}
+                  {showHideButton &&
+                    currentStatus !== MediaStatus.PROCESSING &&
+                    currentStatus !== MediaStatus.AVAILABLE &&
+                    currentStatus !== MediaStatus.PARTIALLY_AVAILABLE &&
+                    currentStatus !== MediaStatus.PENDING && (
+                      <Button
+                        buttonType={'ghost'}
+                        className="z-40"
+                        buttonSize={'sm'}
+                        onClick={() => setShowBlocklistModal(true)}
+                      >
+                        <EyeSlashIcon className={'h-3'} />
+                      </Button>
+                    )}
+                </div>
+              )}
             {showDetail &&
               showHideButton &&
               currentStatus == MediaStatus.BLOCKLISTED && (
@@ -454,7 +490,9 @@ const TitleCard = ({
                     ? `/movie/${id}`
                     : mediaType === 'collection'
                       ? `/collection/${id}`
-                      : `/tv/${id}`
+                      : mediaType === 'book'
+                        ? `/book/${id}`
+                        : `/tv/${id}`
                 }
                 className="absolute inset-0 h-full w-full cursor-pointer overflow-hidden text-left"
                 style={{
@@ -512,6 +550,7 @@ const TitleCard = ({
 
               <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 py-2">
                 {showRequestButton &&
+                  (showDetail || (!position && !image)) &&
                   (!currentStatus ||
                     currentStatus === MediaStatus.UNKNOWN ||
                     currentStatus === MediaStatus.DELETED) && (
