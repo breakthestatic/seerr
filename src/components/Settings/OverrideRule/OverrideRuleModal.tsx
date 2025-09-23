@@ -5,13 +5,21 @@ import {
   KeywordSelector,
   UserSelector,
 } from '@app/components/Selector';
-import type { DVRTestResponse } from '@app/components/Settings/SettingsServices';
+import type {
+  RadarrTestResponse,
+  ReadarrTestResponse,
+  SonarrTestResponse,
+} from '@app/components/Settings/SettingsServices';
 import useSettings from '@app/hooks/useSettings';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
 import type OverrideRule from '@server/entity/OverrideRule';
-import type { RadarrSettings, SonarrSettings } from '@server/lib/settings';
+import type {
+  RadarrSettings,
+  ReadarrSettings,
+  SonarrSettings,
+} from '@server/lib/settings';
 import axios from 'axios';
 import { Field, Formik } from 'formik';
 import { useCallback, useEffect, useState } from 'react';
@@ -40,6 +48,8 @@ const messages = defineMessages('components.Settings.OverrideRuleModal', {
   selectRootFolder: 'Select root folder',
   qualityprofile: 'Quality Profile',
   selectQualityProfile: 'Select quality profile',
+  metadataprofile: 'Metadata Profile',
+  selectMetadataProfile: 'Select metadata profile',
   tags: 'Tags',
   notagoptions: 'No tags.',
   selecttags: 'Select tags',
@@ -57,6 +67,7 @@ interface OverrideRuleModalProps {
   onClose: () => void;
   radarrServices: RadarrSettings[];
   sonarrServices: SonarrSettings[];
+  readarrServices: ReadarrSettings[];
 }
 
 const OverrideRuleModal = ({
@@ -64,47 +75,49 @@ const OverrideRuleModal = ({
   rule,
   radarrServices,
   sonarrServices,
+  readarrServices,
 }: OverrideRuleModalProps) => {
   const intl = useIntl();
   const { addToast } = useToasts();
   const { currentSettings } = useSettings();
   const [isValidated, setIsValidated] = useState(rule ? true : false);
   const [isTesting, setIsTesting] = useState(false);
-  const [testResponse, setTestResponse] = useState<DVRTestResponse>({
+  const [testResponse, setTestResponse] = useState<
+    RadarrTestResponse | SonarrTestResponse | ReadarrTestResponse
+  >({
     profiles: [],
     rootFolders: [],
     tags: [],
+    metadataProfiles: [],
   });
 
   const getServiceInfos = useCallback(
-    async (
-      {
-        hostname,
-        port,
-        apiKey,
-        baseUrl,
-        useSsl = false,
-      }: {
-        hostname: string;
-        port: number;
-        apiKey: string;
-        baseUrl?: string;
-        useSsl?: boolean;
-      },
-      type: 'radarr' | 'sonarr'
-    ) => {
+    async ({
+      hostname,
+      port,
+      apiKey,
+      baseUrl,
+      useSsl = false,
+      serviceType = 'sonarr',
+    }: {
+      hostname: string;
+      port: number;
+      apiKey: string;
+      baseUrl?: string;
+      useSsl?: boolean;
+      serviceType?: 'radarr' | 'sonarr' | 'readarr';
+    }) => {
       setIsTesting(true);
       try {
-        const response = await axios.post<DVRTestResponse>(
-          `/api/v1/settings/${type}/test`,
-          {
-            hostname,
-            apiKey,
-            port: Number(port),
-            baseUrl,
-            useSsl,
-          }
-        );
+        const response = await axios.post<
+          RadarrTestResponse | SonarrTestResponse | ReadarrTestResponse
+        >(`/api/v1/settings/${serviceType}/test`, {
+          hostname,
+          apiKey,
+          port: Number(port),
+          baseUrl,
+          useSsl,
+        });
 
         setIsValidated(true);
         setTestResponse(response.data);
@@ -123,21 +136,39 @@ const OverrideRuleModal = ({
       rule?.radarrServiceId !== undefined &&
       radarrServices[rule?.radarrServiceId]
     ) {
-      getServiceInfos(radarrServices[rule?.radarrServiceId], 'radarr');
+      getServiceInfos({
+        ...radarrServices[rule?.radarrServiceId],
+        serviceType: 'radarr',
+      });
     }
     if (
       rule?.sonarrServiceId !== null &&
       rule?.sonarrServiceId !== undefined &&
       sonarrServices[rule?.sonarrServiceId]
     ) {
-      getServiceInfos(sonarrServices[rule?.sonarrServiceId], 'sonarr');
+      getServiceInfos({
+        ...sonarrServices[rule?.sonarrServiceId],
+        serviceType: 'sonarr',
+      });
+    }
+    if (
+      rule?.readarrServiceId !== null &&
+      rule?.readarrServiceId !== undefined &&
+      readarrServices[rule?.readarrServiceId]
+    ) {
+      getServiceInfos({
+        ...readarrServices[rule?.readarrServiceId],
+        serviceType: 'readarr',
+      });
     }
   }, [
     getServiceInfos,
     radarrServices,
     rule?.radarrServiceId,
     rule?.sonarrServiceId,
+    rule?.readarrServiceId,
     sonarrServices,
+    readarrServices,
   ]);
 
   return (
@@ -156,11 +187,13 @@ const OverrideRuleModal = ({
         initialValues={{
           radarrServiceId: rule?.radarrServiceId,
           sonarrServiceId: rule?.sonarrServiceId,
+          readarrServiceId: rule?.readarrServiceId,
           users: rule?.users,
           genre: rule?.genre,
           language: rule?.language,
           keywords: rule?.keywords,
           profileId: rule?.profileId,
+          metadataProfileId: rule?.metadataProfileId,
           rootFolder: rule?.rootFolder,
           tags: rule?.tags,
         }}
@@ -172,10 +205,12 @@ const OverrideRuleModal = ({
               language: values.language || null,
               keywords: values.keywords || null,
               profileId: Number(values.profileId) || null,
+              metadataProfileId: Number(values.metadataProfileId) || null,
               rootFolder: values.rootFolder || null,
               tags: values.tags || null,
               radarrServiceId: values.radarrServiceId,
               sonarrServiceId: values.sonarrServiceId,
+              readarrServiceId: values.readarrServiceId,
             };
             if (!rule) {
               await axios.post('/api/v1/overrideRule', submission);
@@ -220,10 +255,12 @@ const OverrideRuleModal = ({
                 isSubmitting ||
                 !isValid ||
                 (!values.users &&
-                  !values.genre &&
-                  !values.language &&
-                  !values.keywords) ||
-                (!values.rootFolder && !values.profileId && !values.tags)
+                  (values.readarrServiceId !== null ||
+                    (!values.genre && !values.language && !values.keywords))) ||
+                (!values.rootFolder &&
+                  !values.profileId &&
+                  !values.metadataProfileId &&
+                  !values.tags)
               }
               onOk={() => handleSubmit()}
               title={
@@ -251,25 +288,48 @@ const OverrideRuleModal = ({
                         defaultValue={
                           values.radarrServiceId !== null
                             ? `radarr-${values.radarrServiceId}`
-                            : `sonarr-${values.sonarrServiceId}`
+                            : values.sonarrServiceId !== null
+                              ? `sonarr-${values.sonarrServiceId}`
+                              : values.readarrServiceId !== null
+                                ? `readarr-${values.readarrServiceId}`
+                                : ''
                         }
                         onChange={(e) => {
                           const id = Number(e.target.value.split('-')[1]);
                           if (e.target.value.startsWith('radarr-')) {
                             setFieldValue('radarrServiceId', id);
                             setFieldValue('sonarrServiceId', null);
+                            setFieldValue('readarrServiceId', null);
                             if (radarrServices[id]) {
-                              getServiceInfos(radarrServices[id], 'radarr');
+                              getServiceInfos({
+                                ...radarrServices[id],
+                                serviceType: 'radarr',
+                              });
                             }
                           } else if (e.target.value.startsWith('sonarr-')) {
                             setFieldValue('radarrServiceId', null);
                             setFieldValue('sonarrServiceId', id);
+                            setFieldValue('readarrServiceId', null);
                             if (sonarrServices[id]) {
-                              getServiceInfos(sonarrServices[id], 'sonarr');
+                              getServiceInfos({
+                                ...sonarrServices[id],
+                                serviceType: 'sonarr',
+                              });
+                            }
+                          } else if (e.target.value.startsWith('readarr-')) {
+                            setFieldValue('radarrServiceId', null);
+                            setFieldValue('sonarrServiceId', null);
+                            setFieldValue('readarrServiceId', id);
+                            if (readarrServices[id]) {
+                              getServiceInfos({
+                                ...readarrServices[id],
+                                serviceType: 'readarr',
+                              });
                             }
                           } else {
                             setFieldValue('radarrServiceId', null);
                             setFieldValue('sonarrServiceId', null);
+                            setFieldValue('readarrServiceId', null);
                             setIsValidated(false);
                           }
                         }}
@@ -291,6 +351,14 @@ const OverrideRuleModal = ({
                             value={`sonarr-${sonarr.id}`}
                           >
                             {sonarr.name}
+                          </option>
+                        ))}
+                        {readarrServices.map((readarr) => (
+                          <option
+                            key={`readarr-${readarr.id}`}
+                            value={`readarr-${readarr.id}`}
+                          >
+                            {readarr.name}
                           </option>
                         ))}
                       </select>
@@ -333,85 +401,91 @@ const OverrideRuleModal = ({
                       )}
                   </div>
                 </div>
-                <div className="form-row">
-                  <label htmlFor="genre" className="text-label">
-                    {intl.formatMessage(messages.genres)}
-                  </label>
-                  <div className="form-input-area">
-                    <div className="form-input-field">
-                      <GenreSelector
-                        type={
-                          values.radarrServiceId != null
-                            ? 'movie'
-                            : values.sonarrServiceId != null
-                              ? 'tv'
-                              : 'tv'
-                        }
-                        defaultValue={values.genre}
-                        isMulti
-                        isDisabled={!isValidated || isTesting}
-                        onChange={(genres) => {
-                          setFieldValue(
-                            'genre',
-                            genres?.map((v) => v.value).join(',')
-                          );
-                        }}
-                      />
+                {values.readarrServiceId === null && (
+                  <div className="form-row">
+                    <label htmlFor="genre" className="text-label">
+                      {intl.formatMessage(messages.genres)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <GenreSelector
+                          type={
+                            values.radarrServiceId != null
+                              ? 'movie'
+                              : values.sonarrServiceId != null
+                                ? 'tv'
+                                : 'tv'
+                          }
+                          defaultValue={values.genre}
+                          isMulti
+                          isDisabled={!isValidated || isTesting}
+                          onChange={(genres) => {
+                            setFieldValue(
+                              'genre',
+                              genres?.map((v) => v.value).join(',')
+                            );
+                          }}
+                        />
+                      </div>
+                      {errors.genre &&
+                        touched.genre &&
+                        typeof errors.genre === 'string' && (
+                          <div className="error">{errors.genre}</div>
+                        )}
                     </div>
-                    {errors.genre &&
-                      touched.genre &&
-                      typeof errors.genre === 'string' && (
-                        <div className="error">{errors.genre}</div>
-                      )}
                   </div>
-                </div>
-                <div className="form-row">
-                  <label htmlFor="language" className="text-label">
-                    {intl.formatMessage(messages.languages)}
-                  </label>
-                  <div className="form-input-area">
-                    <div className="form-input-field">
-                      <LanguageSelector
-                        value={values.language}
-                        serverValue={currentSettings.originalLanguage}
-                        setFieldValue={(_key, value) => {
-                          setFieldValue('language', value);
-                        }}
-                        isDisabled={!isValidated || isTesting}
-                      />
+                )}
+                {values.readarrServiceId === null && (
+                  <div className="form-row">
+                    <label htmlFor="language" className="text-label">
+                      {intl.formatMessage(messages.languages)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <LanguageSelector
+                          value={values.language}
+                          serverValue={currentSettings.originalLanguage}
+                          setFieldValue={(_key, value) => {
+                            setFieldValue('language', value);
+                          }}
+                          isDisabled={!isValidated || isTesting}
+                        />
+                      </div>
+                      {errors.language &&
+                        touched.language &&
+                        typeof errors.language === 'string' && (
+                          <div className="error">{errors.language}</div>
+                        )}
                     </div>
-                    {errors.language &&
-                      touched.language &&
-                      typeof errors.language === 'string' && (
-                        <div className="error">{errors.language}</div>
-                      )}
                   </div>
-                </div>
-                <div className="form-row">
-                  <label htmlFor="keywords" className="text-label">
-                    {intl.formatMessage(messages.keywords)}
-                  </label>
-                  <div className="form-input-area">
-                    <div className="form-input-field">
-                      <KeywordSelector
-                        defaultValue={values.keywords}
-                        isMulti
-                        isDisabled={!isValidated || isTesting}
-                        onChange={(value) => {
-                          setFieldValue(
-                            'keywords',
-                            value?.map((v) => v.value).join(',')
-                          );
-                        }}
-                      />
+                )}
+                {values.readarrServiceId === null && (
+                  <div className="form-row">
+                    <label htmlFor="keywords" className="text-label">
+                      {intl.formatMessage(messages.keywords)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <KeywordSelector
+                          defaultValue={values.keywords}
+                          isMulti
+                          isDisabled={!isValidated || isTesting}
+                          onChange={(value) => {
+                            setFieldValue(
+                              'keywords',
+                              value?.map((v) => v.value).join(',')
+                            );
+                          }}
+                        />
+                      </div>
+                      {errors.keywords &&
+                        touched.keywords &&
+                        typeof errors.keywords === 'string' && (
+                          <div className="error">{errors.keywords}</div>
+                        )}
                     </div>
-                    {errors.keywords &&
-                      touched.keywords &&
-                      typeof errors.keywords === 'string' && (
-                        <div className="error">{errors.keywords}</div>
-                      )}
                   </div>
-                </div>
+                )}
                 <h3 className="mt-4 text-lg font-bold leading-8 text-gray-100">
                   {intl.formatMessage(messages.settings)}
                 </h3>
@@ -484,6 +558,48 @@ const OverrideRuleModal = ({
                       )}
                   </div>
                 </div>
+                {values.readarrServiceId !== null && (
+                  <div className="form-row">
+                    <label
+                      htmlFor="metadataProfileIdRule"
+                      className="text-label"
+                    >
+                      {intl.formatMessage(messages.metadataprofile)}
+                    </label>
+                    <div className="form-input-area">
+                      <div className="form-input-field">
+                        <Field
+                          as="select"
+                          id="metadataProfileIdRule"
+                          name="metadataProfileId"
+                          disabled={!isValidated || isTesting}
+                        >
+                          <option value="">
+                            {intl.formatMessage(messages.selectMetadataProfile)}
+                          </option>
+                          {'metadataProfiles' in testResponse &&
+                            testResponse.metadataProfiles &&
+                            testResponse.metadataProfiles.length > 0 &&
+                            testResponse.metadataProfiles.map((profile) => (
+                              <option
+                                key={`loaded-metadata-profile-${profile.id}`}
+                                value={profile.id}
+                              >
+                                {profile.name}
+                              </option>
+                            ))}
+                        </Field>
+                      </div>
+                      {errors.metadataProfileId &&
+                        touched.metadataProfileId &&
+                        typeof errors.metadataProfileId === 'string' && (
+                          <div className="error">
+                            {errors.metadataProfileId}
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                )}
                 <div className="form-row">
                   <label htmlFor="tags" className="text-label">
                     {intl.formatMessage(messages.tags)}
