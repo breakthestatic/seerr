@@ -385,7 +385,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
 
     try {
       await axios.post('/api/v1/blocklist', {
-        tmdbId: movie?.id,
+        externalId: movie?.id,
         mediaType: 'movie',
         title: movie?.title,
         user: user?.id,
@@ -441,7 +441,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
           <CachedImage
             type="tmdb"
             alt=""
-            src={`https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`}
+            src={data.backdropPath}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
             priority
@@ -460,7 +460,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
         onCancel={() => setShowIssueModal(false)}
         show={showIssueModal}
         mediaType="movie"
-        tmdbId={data.id}
+        mediaId={data.id}
       />
       <ManageSlideOver
         data={data}
@@ -476,7 +476,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
         show={showManager}
       />
       <BlocklistModal
-        tmdbId={data.id}
+        externalId={data.id}
         type="movie"
         show={showBlocklistModal}
         onCancel={closeBlocklistModal}
@@ -507,7 +507,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
               downloadItem={data.mediaInfo?.downloadStatus}
               title={data.title}
               inProgress={(data.mediaInfo?.downloadStatus ?? []).length > 0}
-              tmdbId={data.mediaInfo?.tmdbId}
+              mediaId={data.mediaInfo?.tmdbId}
               mediaType="movie"
               plexUrl={plexUrl}
               serviceUrl={data.mediaInfo?.serviceUrl}
@@ -531,7 +531,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                   inProgress={
                     (data.mediaInfo?.downloadStatus4k ?? []).length > 0
                   }
-                  tmdbId={data.mediaInfo?.tmdbId}
+                  mediaId={data.mediaInfo?.tmdbId}
                   mediaType="movie"
                   plexUrl={plexUrl4k}
                   serviceUrl={data.mediaInfo?.serviceUrl4k}
@@ -620,7 +620,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
           <RequestButton
             mediaType="movie"
             media={data.mediaInfo}
-            tmdbId={data.id}
+            mediaId={data.id}
             onUpdate={() => revalidate()}
           />
           {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||

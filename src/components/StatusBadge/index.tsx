@@ -28,8 +28,8 @@ interface StatusBadgeProps {
   inProgress?: boolean;
   plexUrl?: string;
   serviceUrl?: string;
-  tmdbId?: number;
-  mediaType?: 'movie' | 'tv';
+  mediaId?: number;
+  mediaType?: 'movie' | 'tv' | 'book';
   title?: string | string[];
 }
 
@@ -40,7 +40,7 @@ const StatusBadge = ({
   inProgress = false,
   plexUrl,
   serviceUrl,
-  tmdbId,
+  mediaId,
   mediaType,
   title,
 }: StatusBadgeProps) => {
@@ -91,17 +91,26 @@ const StatusBadge = ({
             : 'Jellyfin',
     });
   } else if (hasPermission(Permission.MANAGE_REQUESTS)) {
-    if (mediaType && tmdbId) {
-      mediaLink = `/${mediaType}/${tmdbId}?manage=1`;
+    if (mediaType && mediaId) {
+      mediaLink = `/${mediaType}/${mediaId}?manage=1`;
       mediaLinkDescription = intl.formatMessage(messages.managemedia, {
         mediaType: intl.formatMessage(
-          mediaType === 'movie' ? globalMessages.movie : globalMessages.tvshow
+          mediaType === 'movie'
+            ? globalMessages.movie
+            : mediaType === 'book'
+              ? globalMessages.book
+              : globalMessages.tvshow
         ),
       });
     } else if (hasPermission(Permission.ADMIN) && serviceUrl) {
       mediaLink = serviceUrl;
       mediaLinkDescription = intl.formatMessage(messages.openinarr, {
-        arr: mediaType === 'movie' ? 'Radarr' : 'Sonarr',
+        arr:
+          mediaType === 'movie'
+            ? 'Radarr'
+            : mediaType === 'book'
+              ? 'Readarr'
+              : 'Sonarr',
       });
     }
   }

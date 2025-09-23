@@ -415,7 +415,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
 
     try {
       const res = await axios.post('/api/v1/blocklist', {
-        tmdbId: tv?.id,
+        externalId: tv?.id,
         mediaType: 'tv',
         title: tv?.name,
         user: user?.id,
@@ -473,7 +473,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
           <CachedImage
             type="tmdb"
             alt=""
-            src={`https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${data.backdropPath}`}
+            src={data.backdropPath}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             fill
             priority
@@ -489,7 +489,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
       )}
       <PageTitle title={data.name} />
       <BlocklistModal
-        tmdbId={data.id}
+        externalId={data.id}
         type="tv"
         show={showBlocklistModal}
         onCancel={closeBlocklistModal}
@@ -500,10 +500,10 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
         onCancel={() => setShowIssueModal(false)}
         show={showIssueModal}
         mediaType="tv"
-        tmdbId={data.id}
+        mediaId={data.id}
       />
       <RequestModal
-        tmdbId={data.id}
+        mediaId={data.id}
         show={showRequestModal}
         type="tv"
         onComplete={() => {
@@ -531,7 +531,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             type="tmdb"
             src={
               data.posterPath
-                ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${data.posterPath}`
+                ? data.posterPath
                 : '/images/seerr_poster_not_found.png'
             }
             alt=""
@@ -549,7 +549,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
               downloadItem={data.mediaInfo?.downloadStatus}
               title={data.name}
               inProgress={(data.mediaInfo?.downloadStatus ?? []).length > 0}
-              tmdbId={data.mediaInfo?.tmdbId}
+              mediaId={data.mediaInfo?.tmdbId}
               mediaType="tv"
               plexUrl={plexUrl}
               serviceUrl={data.mediaInfo?.serviceUrl}
@@ -573,7 +573,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                   inProgress={
                     (data.mediaInfo?.downloadStatus4k ?? []).length > 0
                   }
-                  tmdbId={data.mediaInfo?.tmdbId}
+                  mediaId={data.mediaInfo?.tmdbId}
                   mediaType="tv"
                   plexUrl={plexUrl4k}
                   serviceUrl={data.mediaInfo?.serviceUrl4k}
@@ -662,7 +662,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
           <RequestButton
             mediaType="tv"
             onUpdate={() => revalidate()}
-            tmdbId={data?.id}
+            mediaId={data?.id}
             media={data?.mediaInfo}
             isShowComplete={isComplete}
             is4kShowComplete={is4kComplete}

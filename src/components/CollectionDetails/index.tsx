@@ -221,7 +221,7 @@ const CollectionDetails = ({ collection }: CollectionDetailsProps) => {
       )}
       <PageTitle title={data.name} />
       <RequestModal
-        tmdbId={data.id}
+        mediaId={data.id}
         show={requestModal}
         type="collection"
         is4k={is4k}

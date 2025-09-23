@@ -21,6 +21,27 @@ import { In } from 'typeorm';
 
 const mediaRoutes = Router();
 
+mediaRoutes.get<{ mediatype: string; mediaid: string }>(
+  '/lookup/:mediatype/:mediaid',
+  async (req, res, next) => {
+    const mediaRepository = getRepository(Media);
+
+    try {
+      const mediaTypeParam = req.params.mediatype.toLowerCase();
+      const externalId = Number(req.params.mediaid);
+      const key = mediaTypeParam === 'book' ? 'hcId' : 'tmdbId';
+
+      const media = await mediaRepository.findOne({
+        where: { [key]: externalId, mediaType: mediaTypeParam as MediaType },
+      });
+
+      return res.status(200).json({ id: media?.id || null });
+    } catch (e) {
+      next({ status: 500, message: e.message });
+    }
+  }
+);
+
 mediaRoutes.get('/', async (req, res, next) => {
   const mediaRepository = getRepository(Media);
 
@@ -266,6 +287,9 @@ mediaRoutes.delete(
         await (service as RadarrAPI).removeMovie(media.tmdbId);
       } else {
         const tmdb = new TheMovieDb();
+        if (!media.hasTmdbId()) {
+          throw new Error('TMDB ID is missing for this media!');
+        }
         const series = await tmdb.getTvShow({ tvId: media.tmdbId });
         const tvdbId = series.external_ids.tvdb_id ?? media.tvdbId;
         if (!tvdbId) {
