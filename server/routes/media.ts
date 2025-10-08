@@ -1,4 +1,5 @@
 import RadarrAPI from '@server/api/servarr/radarr';
+import ReadarrAPI from '@server/api/servarr/readarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
 import TautulliAPI from '@server/api/tautulli';
 import TheMovieDb from '@server/api/themoviedb';
@@ -226,11 +227,16 @@ mediaRoutes.delete(
 
       const is4k = String(req.query.is4k) === 'true';
       const isMovie = media.mediaType === MediaType.MOVIE;
+      const isBook = media.mediaType === MediaType.BOOK;
 
       let serviceSettings;
       if (isMovie) {
         serviceSettings = settings.radarr.find(
           (radarr) => radarr.isDefault && radarr.is4k === is4k
+        );
+      } else if (isBook) {
+        serviceSettings = settings.readarr.find(
+          (readarr) => readarr.isDefault && readarr.isAudio === is4k
         );
       } else {
         serviceSettings = settings.sonarr.find(
@@ -248,6 +254,10 @@ mediaRoutes.delete(
           serviceSettings = settings.radarr.find(
             (radarr) => radarr.id === specificServiceId
           );
+        } else if (isBook) {
+          serviceSettings = settings.readarr.find(
+            (readarr) => readarr.id === media.serviceId
+          );
         } else {
           serviceSettings = settings.sonarr.find(
             (sonarr) => sonarr.id === specificServiceId
@@ -255,12 +265,15 @@ mediaRoutes.delete(
         }
       }
 
+      const serviceName = isMovie ? 'Radarr' : isBook ? 'Readarr' : 'Sonarr';
+      const serviceType = is4k ? (isBook ? 'Audiobook' : '4K ') : '';
+
       if (!serviceSettings) {
         logger.warn(
           `There is no default ${
-            is4k ? '4K ' : '' + isMovie ? 'Radarr' : 'Sonarr'
+            serviceType + serviceName
           }/ server configured. Did you set any of your ${
-            is4k ? '4K ' : '' + isMovie ? 'Radarr' : 'Sonarr'
+            serviceType + serviceName
           } servers as default?`,
           {
             label: 'Media Request',
@@ -276,6 +289,11 @@ mediaRoutes.delete(
           apiKey: serviceSettings?.apiKey,
           url: RadarrAPI.buildUrl(serviceSettings, '/api/v3'),
         });
+      } else if (isBook) {
+        service = new ReadarrAPI({
+          apiKey: serviceSettings?.apiKey,
+          url: ReadarrAPI.buildUrl(serviceSettings, '/api/v1'),
+        });
       } else {
         service = new SonarrAPI({
           apiKey: serviceSettings?.apiKey,
@@ -285,6 +303,11 @@ mediaRoutes.delete(
 
       if (isMovie) {
         await (service as RadarrAPI).removeMovie(media.tmdbId);
+      } else if (isBook) {
+        if (!media.hasHcId()) {
+          throw new Error('Hardcover ID is missing for this media!');
+        }
+        await (service as ReadarrAPI).removeBook(media.hcId);
       } else {
         const tmdb = new TheMovieDb();
         if (!media.hasTmdbId()) {
