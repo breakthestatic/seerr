@@ -5638,7 +5638,7 @@ paths:
             example: en
         - in: query
           name: type
-          required: true
+          required: false
           schema:
             type: string
             example: 'Book'
