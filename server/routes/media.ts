@@ -302,6 +302,9 @@ mediaRoutes.delete(
       }
 
       if (isMovie) {
+        if (!media.hasTmdbId()) {
+          throw new Error('TMDB ID is missing for this media!');
+        }
         await (service as RadarrAPI).removeMovie(media.tmdbId);
       } else if (isBook) {
         if (!media.hasHcId()) {
