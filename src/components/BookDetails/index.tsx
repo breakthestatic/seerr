@@ -1,3 +1,4 @@
+import HardcoverLogo from '@app/assets/hardcover.svg';
 import AuthorCard from '@app/components/AuthorCard';
 import BlocklistModal from '@app/components/BlocklistModal';
 import Button from '@app/components/Common/Button';
@@ -45,6 +46,13 @@ const messages = defineMessages('components.BookDetails', {
   markAudioavailable: 'Mark Audiobook as Available',
   reportissue: 'Report an Issue',
   managebook: 'Manage Book',
+  releasedate: 'Release Date',
+  publisher: 'Publisher',
+  language: 'Language',
+  isbn: 'ISBN',
+  format: 'Format',
+  audiobookduration: 'Audiobook Duration',
+  narrators: 'Narrator{narratorCount, plural, one {} other {s}}',
 });
 
 interface BookDetailsProps {
@@ -413,7 +421,7 @@ const BookDetails = ({ book }: BookDetailsProps) => {
         <div className="media-overview-right">
           {data.series.length > 0 &&
             data.series.map((series) => (
-              <div className="mb-6">
+              <div className="mb-6" key={`series-${series.series_id}`}>
                 <Link href={`/series/${series.series_id}`}>
                   <div className="group relative z-0 scale-100 transform-gpu cursor-pointer overflow-hidden rounded-lg bg-gray-800 bg-cover bg-center shadow-md ring-1 ring-gray-700 transition duration-300 hover:scale-105 hover:ring-gray-500">
                     <div className="absolute inset-0 z-0">
@@ -452,6 +460,88 @@ const BookDetails = ({ book }: BookDetailsProps) => {
                 </Link>
               </div>
             ))}
+          <div className="media-facts">
+            {data.rating != null && (
+              <div className="media-ratings">
+                {data.slug ? (
+                  <a
+                    href={`https://hardcover.app/books/${encodeURIComponent(
+                      data.slug
+                    )}`}
+                    className="media-rating"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <HardcoverLogo className="w-6" />
+                    <span>{data.rating.toFixed(1)}</span>
+                  </a>
+                ) : (
+                  <span className="media-rating">
+                    <HardcoverLogo className="w-6" />
+                    <span>{data.rating.toFixed(1)}</span>
+                  </span>
+                )}
+              </div>
+            )}
+            {data.releaseDate && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.releasedate)}</span>
+                <span className="media-fact-value">
+                  {intl.formatDate(data.releaseDate, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  })}
+                </span>
+              </div>
+            )}
+            {data.publisher && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.publisher)}</span>
+                <span className="media-fact-value">{data.publisher}</span>
+              </div>
+            )}
+            {data.language && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.language)}</span>
+                <span className="media-fact-value">{data.language}</span>
+              </div>
+            )}
+            {data.isbn && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.isbn)}</span>
+                <span className="media-fact-value">{data.isbn}</span>
+              </div>
+            )}
+            {data.format && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.format)}</span>
+                <span className="media-fact-value">{data.format}</span>
+              </div>
+            )}
+            {data.audiobookDuration && data.audiobookDuration > 0 && (
+              <div className="media-fact">
+                <span>{intl.formatMessage(messages.audiobookduration)}</span>
+                <span className="media-fact-value">
+                  {Math.floor(data.audiobookDuration / 3600)}h{' '}
+                  {Math.floor((data.audiobookDuration % 3600) / 60)}m
+                </span>
+              </div>
+            )}
+            {data.narrators && data.narrators.length > 0 && (
+              <div className="media-fact">
+                <span>
+                  {intl.formatMessage(messages.narrators, {
+                    narratorCount: data.narrators.length,
+                  })}
+                </span>
+                <span className="media-fact-value">
+                  {data.narrators.join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {data.author.length > 0 && (

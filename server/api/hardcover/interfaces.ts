@@ -259,6 +259,38 @@ export interface HardcoverSeries {
   book_series: BookSeries[];
 }
 
+export interface HardcoverPhysicalEdition {
+  id: number;
+  pages?: number;
+  isbn_10?: string;
+  isbn_13?: string;
+  asin?: string;
+  physical_format?: string;
+  publisher?: {
+    name: string;
+  };
+  language?: {
+    language: string;
+  };
+}
+
+export interface HardcoverEbookEdition {
+  id: number;
+  isbn_13?: string;
+  asin?: string;
+}
+
+export interface HardcoverAudioEdition {
+  id: number;
+  asin?: string;
+  audio_seconds?: number;
+  contributions?: {
+    author: {
+      name: string;
+    };
+  }[];
+}
+
 export interface HardcoverBookDetails {
   id: number;
   title: string;
@@ -268,6 +300,9 @@ export interface HardcoverBookDetails {
   subtitle: string;
   headline: string;
   rating: number;
+  ratings_count: number;
+  reviews_count: number;
+  slug: string;
   pages: number;
   cached_tags: Tags;
   contributions: BookContribution[];
@@ -276,6 +311,12 @@ export interface HardcoverBookDetails {
     series_id: number;
     series: HardcoverSeries;
   }[];
+  default_physical_edition_id?: number;
+  default_ebook_edition_id?: number;
+  default_audio_edition_id?: number;
+  default_physical_edition?: HardcoverPhysicalEdition;
+  default_ebook_edition?: HardcoverEbookEdition;
+  default_audio_edition?: HardcoverAudioEdition;
 }
 
 export interface HardcoverAuthorDetails {

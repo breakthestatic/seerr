@@ -24,11 +24,46 @@ export const BOOK = `
   users_count
   release_date
   rating
+  ratings_count
+  reviews_count
+  slug
   cached_tags
   image {
     url
     height
     width
+  }
+  default_physical_edition_id
+  default_ebook_edition_id
+  default_audio_edition_id
+  default_physical_edition {
+    id
+    pages
+    isbn_10
+    isbn_13
+    asin
+    physical_format
+    publisher {
+      name
+    }
+    language {
+      language
+    }
+  }
+  default_ebook_edition {
+    id
+    isbn_13
+    asin
+  }
+  default_audio_edition {
+    id
+    asin
+    audio_seconds
+    contributions(where: { contribution: { _eq: "Narrator" } }, limit: 3) {
+      author {
+        name
+      }
+    }
   }
 `;
 

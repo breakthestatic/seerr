@@ -30,6 +30,19 @@ export interface BookDetails {
   }[];
   posterPath: string;
   backdropPath: string;
+  slug: string;
+  rating?: number;
+  ratingsCount?: number;
+  reviewsCount?: number;
+  publisher?: string;
+  language?: string;
+  isbn?: string;
+  format?: string;
+  hasPhysicalEdition: boolean;
+  hasEbookEdition: boolean;
+  hasAudioEdition: boolean;
+  audiobookDuration?: number;
+  narrators?: string[];
 }
 
 export const mapBookDetails = (
@@ -59,4 +72,22 @@ export const mapBookDetails = (
     }
     return '';
   })(),
+  slug: book.slug,
+  rating: book.rating,
+  ratingsCount: book.ratings_count ?? 0,
+  reviewsCount: book.reviews_count ?? 0,
+  publisher: book.default_physical_edition?.publisher?.name,
+  language: book.default_physical_edition?.language?.language,
+  isbn:
+    book.default_physical_edition?.isbn_13 ??
+    book.default_physical_edition?.isbn_10 ??
+    book.default_ebook_edition?.isbn_13,
+  format: book.default_physical_edition?.physical_format,
+  hasPhysicalEdition: !!book.default_physical_edition_id,
+  hasEbookEdition: !!book.default_ebook_edition_id,
+  hasAudioEdition: !!book.default_audio_edition_id,
+  audiobookDuration: book.default_audio_edition?.audio_seconds,
+  narrators: book.default_audio_edition?.contributions
+    ?.map((c) => c.author?.name)
+    .filter(Boolean) as string[] | undefined,
 });
