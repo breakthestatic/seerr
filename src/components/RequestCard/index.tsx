@@ -37,6 +37,7 @@ const messages = defineMessages('components.RequestCard', {
   mediaerror: '{mediaType} Not Found',
   tmdbid: 'TMDB ID',
   tvdbid: 'TheTVDB ID',
+  hcid: 'Hardcover ID',
   approverequest: 'Approve Request',
   declinerequest: 'Decline Request',
   editrequest: 'Edit Request',
@@ -106,7 +107,9 @@ const RequestCardError = ({ requestData }: RequestCardErrorProps) => {
                   requestData?.type
                     ? requestData?.type === 'movie'
                       ? globalMessages.movie
-                      : globalMessages.tvshow
+                      : requestData?.type === 'book'
+                        ? globalMessages.book
+                        : globalMessages.tvshow
                     : globalMessages.request
                 ),
               })}
@@ -450,7 +453,7 @@ const RequestCard = ({ request, onTitleData }: RequestCardProps) => {
                 MediaStatus.DELETED ? (
               <Badge
                 badgeType="warning"
-                href={`/${requestData.type}/${requestData.media.tmdbId}?manage=1`}
+                href={`/${requestData.type}/${requestData.type === 'book' ? requestData.media.hcId : requestData.media.tmdbId}?manage=1`}
               >
                 {intl.formatMessage(globalMessages.pending)}
               </Badge>

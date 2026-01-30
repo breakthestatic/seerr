@@ -44,6 +44,7 @@ const messages = defineMessages('components.RequestList.RequestItem', {
   cancelRequest: 'Cancel Request',
   tmdbid: 'TMDB ID',
   tvdbid: 'TheTVDB ID',
+  hcid: 'Hardcover ID',
   unknowntitle: 'Unknown Title',
   removearr: 'Remove from {arr}',
   profileName: 'Profile',
@@ -97,7 +98,9 @@ const RequestItemError = ({
                 requestData?.type
                   ? requestData?.type === 'movie'
                     ? globalMessages.movie
-                    : globalMessages.tvshow
+                    : requestData?.type === 'book'
+                      ? globalMessages.book
+                      : globalMessages.tvshow
                   : globalMessages.request
               ),
             })}
@@ -106,13 +109,19 @@ const RequestItemError = ({
             <>
               <div className="card-field">
                 <span className="card-field-name">
-                  {intl.formatMessage(messages.tmdbid)}
+                  {intl.formatMessage(
+                    requestData.type === 'book'
+                      ? messages.hcid
+                      : messages.tmdbid
+                  )}
                 </span>
                 <span className="flex truncate text-sm text-gray-300">
-                  {requestData.media.tmdbId}
+                  {requestData.type === 'book'
+                    ? requestData.media.hcId
+                    : requestData.media.tmdbId}
                 </span>
               </div>
-              {requestData.media.tvdbId && (
+              {requestData.media.tvdbId && requestData.type !== 'book' && (
                 <div className="card-field">
                   <span className="card-field-name">
                     {intl.formatMessage(messages.tvdbid)}
@@ -516,7 +525,7 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
               ) : requestData.status === MediaRequestStatus.FAILED ? (
                 <Badge
                   badgeType="danger"
-                  href={`/${requestData.type}/${requestData.media.tmdbId}?manage=1`}
+                  href={`/${requestData.type}/${requestData.type === 'book' ? requestData.media.hcId : requestData.media.tmdbId}?manage=1`}
                 >
                   {intl.formatMessage(globalMessages.failed)}
                 </Badge>
@@ -525,7 +534,7 @@ const RequestItem = ({ request, revalidateList }: RequestItemProps) => {
                   MediaStatus.DELETED ? (
                 <Badge
                   badgeType="warning"
-                  href={`/${requestData.type}/${requestData.media.tmdbId}?manage=1`}
+                  href={`/${requestData.type}/${requestData.type === 'book' ? requestData.media.hcId : requestData.media.tmdbId}?manage=1`}
                 >
                   {intl.formatMessage(globalMessages.pending)}
                 </Badge>
