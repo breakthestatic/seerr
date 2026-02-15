@@ -4,21 +4,23 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
   name = 'AddForeignKeyIndexes1771259394105';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "IDX_6bbafa28411e6046421991ea21"`);
     await queryRunner.query(
-      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"))`
+      `DROP INDEX IF EXISTS "IDX_e460d2f12505b0d9adf2a8014a"`
     );
     await queryRunner.query(
-      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
+      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"))`
+    );
+    await queryRunner.query(
+      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
     );
     await queryRunner.query(`DROP TABLE "blocklist"`);
     await queryRunner.query(
       `ALTER TABLE "temporary_blocklist" RENAME TO "blocklist"`
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_6bbafa28411e6046421991ea21" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
-    await queryRunner.query(`DROP INDEX "IDX_6bbafa28411e6046421991ea21"`);
+    await queryRunner.query(`DROP INDEX "IDX_e460d2f12505b0d9adf2a8014a"`);
     await queryRunner.query(
       `CREATE TABLE "temporary_user_push_subscription" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "endpoint" varchar NOT NULL, "p256dh" varchar NOT NULL, "auth" varchar NOT NULL, "userId" integer, "userAgent" varchar, "createdAt" datetime DEFAULT (CURRENT_TIMESTAMP), CONSTRAINT "UQ_6427d07d9a171a3a1ab87480005" UNIQUE ("endpoint", "userId"), CONSTRAINT "UQ_f90ab5a4ed54905a4bb51a7148b" UNIQUE ("auth"), CONSTRAINT "FK_03f7958328e311761b0de675fbe" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`
     );
@@ -40,10 +42,10 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
       `ALTER TABLE "temporary_user_push_subscription" RENAME TO "user_push_subscription"`
     );
     await queryRunner.query(
-      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"))`
+      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"))`
     );
     await queryRunner.query(
-      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
+      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
     );
     await queryRunner.query(`DROP TABLE "blocklist"`);
     await queryRunner.query(
@@ -89,7 +91,7 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
       `CREATE INDEX "IDX_03f7958328e311761b0de675fb" ON "user_push_subscription" ("userId") `
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_09b94c932e84635c5461f3c0a9" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_356721a49f145aa439c16e6b99" ON "blocklist" ("userId") `
@@ -97,20 +99,20 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_087099b39600be695591da9a49" ON "season" ("mediaId") `
     );
-    await queryRunner.query(`DROP INDEX "IDX_09b94c932e84635c5461f3c0a9"`);
+    await queryRunner.query(`DROP INDEX "IDX_e460d2f12505b0d9adf2a8014a"`);
     await queryRunner.query(`DROP INDEX "IDX_356721a49f145aa439c16e6b99"`);
     await queryRunner.query(
-      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"), CONSTRAINT "FK_356721a49f145aa439c16e6b999" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_5c8af2d0e83b3be6d250eccc19d" FOREIGN KEY ("mediaId") REFERENCES "media" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`
+      `CREATE TABLE "temporary_blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"), CONSTRAINT "FK_356721a49f145aa439c16e6b999" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_5c8af2d0e83b3be6d250eccc19d" FOREIGN KEY ("mediaId") REFERENCES "media" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`
     );
     await queryRunner.query(
-      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
+      `INSERT INTO "temporary_blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "blocklist"`
     );
     await queryRunner.query(`DROP TABLE "blocklist"`);
     await queryRunner.query(
       `ALTER TABLE "temporary_blocklist" RENAME TO "blocklist"`
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_09b94c932e84635c5461f3c0a9" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_356721a49f145aa439c16e6b99" ON "blocklist" ("userId") `
@@ -119,26 +121,26 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_356721a49f145aa439c16e6b99"`);
-    await queryRunner.query(`DROP INDEX "IDX_09b94c932e84635c5461f3c0a9"`);
+    await queryRunner.query(`DROP INDEX "IDX_e460d2f12505b0d9adf2a8014a"`);
     await queryRunner.query(
       `ALTER TABLE "blocklist" RENAME TO "temporary_blocklist"`
     );
     await queryRunner.query(
-      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"))`
+      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"))`
     );
     await queryRunner.query(
-      `INSERT INTO "blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
+      `INSERT INTO "blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
     );
     await queryRunner.query(`DROP TABLE "temporary_blocklist"`);
     await queryRunner.query(
       `CREATE INDEX "IDX_356721a49f145aa439c16e6b99" ON "blocklist" ("userId") `
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_09b94c932e84635c5461f3c0a9" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
     await queryRunner.query(`DROP INDEX "IDX_087099b39600be695591da9a49"`);
     await queryRunner.query(`DROP INDEX "IDX_356721a49f145aa439c16e6b99"`);
-    await queryRunner.query(`DROP INDEX "IDX_09b94c932e84635c5461f3c0a9"`);
+    await queryRunner.query(`DROP INDEX "IDX_e460d2f12505b0d9adf2a8014a"`);
     await queryRunner.query(`DROP INDEX "IDX_03f7958328e311761b0de675fb"`);
     await queryRunner.query(`DROP INDEX "IDX_f4fc4efa14c3ba2b29c4525fa1"`);
     await queryRunner.query(`DROP INDEX "IDX_6997bee94720f1ecb7f3113709"`);
@@ -156,10 +158,10 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
       `ALTER TABLE "blocklist" RENAME TO "temporary_blocklist"`
     );
     await queryRunner.query(
-      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"))`
+      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"))`
     );
     await queryRunner.query(
-      `INSERT INTO "blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
+      `INSERT INTO "blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
     );
     await queryRunner.query(`DROP TABLE "temporary_blocklist"`);
     await queryRunner.query(
@@ -183,21 +185,21 @@ export class AddForeignKeyIndexes1771259394105 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TABLE "temporary_user_push_subscription"`);
     await queryRunner.query(
-      `CREATE INDEX "IDX_6bbafa28411e6046421991ea21" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
-    await queryRunner.query(`DROP INDEX "IDX_6bbafa28411e6046421991ea21"`);
+    await queryRunner.query(`DROP INDEX "IDX_e460d2f12505b0d9adf2a8014a"`);
     await queryRunner.query(
       `ALTER TABLE "blocklist" RENAME TO "temporary_blocklist"`
     );
     await queryRunner.query(
-      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "tmdbId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_6bbafa28411e6046421991ea21c" UNIQUE ("tmdbId"), CONSTRAINT "FK_62b7ade94540f9f8d8bede54b99" FOREIGN KEY ("mediaId") REFERENCES "media" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_53c1ab62c3e5875bc3ac474823e" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`
+      `CREATE TABLE "blocklist" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "mediaType" varchar NOT NULL, "title" varchar, "externalId" integer NOT NULL, "blocklistedTags" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer, "mediaId" integer, CONSTRAINT "REL_62b7ade94540f9f8d8bede54b9" UNIQUE ("mediaId"), CONSTRAINT "UQ_e460d2f12505b0d9adf2a8014af" UNIQUE ("externalId"), CONSTRAINT "UQ_cd389742b9156ca10495f21fe0a" UNIQUE ("externalId", "mediaType"), CONSTRAINT "FK_62b7ade94540f9f8d8bede54b99" FOREIGN KEY ("mediaId") REFERENCES "media" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_53c1ab62c3e5875bc3ac474823e" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`
     );
     await queryRunner.query(
-      `INSERT INTO "blocklist"("id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "tmdbId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
+      `INSERT INTO "blocklist"("id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId") SELECT "id", "mediaType", "title", "externalId", "blocklistedTags", "createdAt", "userId", "mediaId" FROM "temporary_blocklist"`
     );
     await queryRunner.query(`DROP TABLE "temporary_blocklist"`);
     await queryRunner.query(
-      `CREATE INDEX "IDX_6bbafa28411e6046421991ea21" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
   }
 }

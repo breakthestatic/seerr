@@ -11,7 +11,7 @@ export class AddForeignKeyIndexes1771259406751 implements MigrationInterface {
       `ALTER TABLE "blocklist" DROP CONSTRAINT "FK_62b7ade94540f9f8d8bede54b99"`
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_6bbafa28411e6046421991ea21"`
+      `DROP INDEX IF EXISTS "public"."IDX_e460d2f12505b0d9adf2a8014a"`
     );
     await queryRunner.query(
       `CREATE SEQUENCE IF NOT EXISTS "blocklist_id_seq" OWNED BY "blocklist"."id"`
@@ -62,7 +62,7 @@ export class AddForeignKeyIndexes1771259406751 implements MigrationInterface {
       `CREATE INDEX "IDX_03f7958328e311761b0de675fb" ON "user_push_subscription" ("userId") `
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_09b94c932e84635c5461f3c0a9" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_356721a49f145aa439c16e6b99" ON "blocklist" ("userId") `
@@ -92,7 +92,7 @@ export class AddForeignKeyIndexes1771259406751 implements MigrationInterface {
       `DROP INDEX "public"."IDX_356721a49f145aa439c16e6b99"`
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_09b94c932e84635c5461f3c0a9"`
+      `DROP INDEX "public"."IDX_e460d2f12505b0d9adf2a8014a"`
     );
     await queryRunner.query(
       `DROP INDEX "public"."IDX_03f7958328e311761b0de675fb"`
@@ -141,7 +141,7 @@ export class AddForeignKeyIndexes1771259406751 implements MigrationInterface {
     );
     await queryRunner.query(`DROP SEQUENCE "blocklist_id_seq"`);
     await queryRunner.query(
-      `CREATE INDEX "IDX_6bbafa28411e6046421991ea21" ON "blocklist" ("tmdbId") `
+      `CREATE INDEX "IDX_e460d2f12505b0d9adf2a8014a" ON "blocklist" ("externalId") `
     );
     await queryRunner.query(
       `ALTER TABLE "blocklist" ADD CONSTRAINT "FK_62b7ade94540f9f8d8bede54b99" FOREIGN KEY ("mediaId") REFERENCES "media"("id") ON DELETE CASCADE ON UPDATE NO ACTION`
