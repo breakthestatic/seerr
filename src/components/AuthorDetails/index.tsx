@@ -101,7 +101,7 @@ const AuthorDetails = () => {
         )}
         <div className="text-center text-gray-300 lg:text-left">
           <h1 className="text-3xl text-white lg:text-4xl">{data.name}</h1>
-          <div className="mb-2 mt-1 space-y-1 text-xs text-white sm:text-sm lg:text-base"></div>
+          <div className="mb-2 mt-1 space-y-1 text-xs text-white sm:text-sm lg:text-base" />
           {data.bio && (
             <div className="relative text-left">
               {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
