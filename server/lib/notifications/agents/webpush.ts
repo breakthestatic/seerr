@@ -56,8 +56,11 @@ class WebPushAgent
     const mediaType = payload.media
       ? payload.media.mediaType === MediaType.MOVIE
         ? 'movie'
-        : 'series'
+        : payload.media.mediaType === MediaType.BOOK
+          ? 'book'
+          : 'series'
       : undefined;
+
     const is4k = payload.request?.is4k;
 
     const issueType = payload.issue
@@ -73,35 +76,67 @@ class WebPushAgent
         break;
       case Notification.MEDIA_AUTO_REQUESTED:
         message = `Automatically submitted a new ${
-          is4k ? '4K ' : ''
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
         }${mediaType} request.`;
         break;
       case Notification.MEDIA_APPROVED:
         message = `Your ${
-          is4k ? '4K ' : ''
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
         }${mediaType} request has been approved.`;
         break;
       case Notification.MEDIA_AUTO_APPROVED:
         message = `Automatically approved a new ${
-          is4k ? '4K ' : ''
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
         }${mediaType} request from ${
           payload.request?.requestedBy.displayName
         }.`;
         break;
       case Notification.MEDIA_AVAILABLE:
         message = `Your ${
-          is4k ? '4K ' : ''
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
         }${mediaType} request is now available!`;
         break;
       case Notification.MEDIA_DECLINED:
-        message = `Your ${is4k ? '4K ' : ''}${mediaType} request was declined.`;
+        message = `Your ${
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
+        }${mediaType} request was declined.`;
         break;
       case Notification.MEDIA_FAILED:
-        message = `Failed to process ${is4k ? '4K ' : ''}${mediaType} request.`;
+        message = `Failed to process ${
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
+        }${mediaType} request.`;
         break;
       case Notification.MEDIA_PENDING:
         message = `Approval required for a new ${
-          is4k ? '4K ' : ''
+          is4k
+            ? payload.media?.mediaType === MediaType.BOOK
+              ? 'audio'
+              : '4K '
+            : ''
         }${mediaType} request from ${
           payload.request?.requestedBy.displayName
         }.`;
