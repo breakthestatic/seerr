@@ -5,6 +5,7 @@ import DiscoverSlider from '@server/entity/DiscoverSlider';
 import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { startJobs } from '@server/job/schedule';
+import { restoreBookData, revertBookChanges } from '@server/lib/bookMigration';
 import notificationManager from '@server/lib/notifications';
 import DiscordAgent from '@server/lib/notifications/agents/discord';
 import EmailAgent from '@server/lib/notifications/agents/email';
@@ -70,10 +71,14 @@ app
     // Run migrations in production
     if (process.env.NODE_ENV === 'production') {
       if (isPgsql) {
+        await revertBookChanges(dbConnection);
         await dbConnection.runMigrations();
+        await restoreBookData(dbConnection);
       } else {
         await dbConnection.query('PRAGMA foreign_keys=OFF');
+        await revertBookChanges(dbConnection);
         await dbConnection.runMigrations();
+        await restoreBookData(dbConnection);
         await dbConnection.query('PRAGMA foreign_keys=ON');
       }
     }
