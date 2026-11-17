@@ -8,6 +8,8 @@ import {
 } from '@server/api/hardcover/constants';
 import cacheManager from '@server/lib/cache';
 import { getSettings } from '@server/lib/settings';
+import logger from '@server/logger';
+import type { AxiosError, AxiosRequestConfig } from 'axios';
 
 import type {
   AuthorByPKResponse,
@@ -36,6 +38,47 @@ interface SearchOptions {
   page?: number;
 }
 
+// Hardcover rate limits per API token, but each `new Hardcover()` gets its own
+// axios instance, so throttling has to live at module level to be shared.
+const MIN_REQUEST_INTERVAL_MS = 250;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
+const MAX_RETRY_DELAY_MS = 10000;
+const RETRYABLE_STATUSES = [429, 502, 503, 504];
+
+let nextRequestSlot = 0;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Reserves the next free slot synchronously, so concurrent callers queue up
+// in order, then waits for it.
+const waitForRequestSlot = async (): Promise<void> => {
+  const now = Date.now();
+  const slot = Math.max(now, nextRequestSlot);
+  nextRequestSlot = slot + MIN_REQUEST_INTERVAL_MS;
+  if (slot > now) {
+    await sleep(slot - now);
+  }
+};
+
+// Delays every queued request, not just the one that was rejected.
+const pauseRequests = (ms: number): void => {
+  nextRequestSlot = Math.max(nextRequestSlot, Date.now() + ms);
+};
+
+const getRetryDelay = (error: AxiosError, attempt: number): number => {
+  const retryAfter = Number(error.response?.headers?.['retry-after']);
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) {
+    return Math.min(retryAfter * 1000, MAX_RETRY_DELAY_MS);
+  }
+  const backoff = RETRY_BASE_DELAY_MS * 2 ** attempt;
+  return Math.min(backoff + Math.random() * 250, MAX_RETRY_DELAY_MS);
+};
+
+type RetryableRequestConfig = AxiosRequestConfig & {
+  hardcoverRetries?: number;
+};
+
 export const getHeader = (tags: Tags): string | null => {
   if (!tags.Genre?.length) {
     return null;
@@ -58,13 +101,45 @@ class Hardcover extends ExternalAPI {
       {},
       {
         nodeCache: cacheManager.getCache('hardcover').data,
-        rateLimit: {
-          maxRPS: 5,
-          maxRequests: 50,
-        },
         headers: {
           authorization: `Bearer ${token}`,
         },
+      }
+    );
+
+    this.axios.interceptors.request.use(async (config) => {
+      await waitForRequestSlot();
+      return config;
+    });
+    this.axios.interceptors.response.use(
+      undefined,
+      async (error: AxiosError) => {
+        const config = error.config as RetryableRequestConfig | undefined;
+        const status = error.response?.status;
+        if (!config || !status || !RETRYABLE_STATUSES.includes(status)) {
+          throw error;
+        }
+
+        const attempt = config.hardcoverRetries ?? 0;
+        if (attempt >= MAX_RETRIES) {
+          logger.warn('Hardcover request failed after retries', {
+            label: 'Hardcover',
+            status,
+            attempts: attempt + 1,
+          });
+          throw error;
+        }
+
+        const delay = getRetryDelay(error, attempt);
+        logger.debug('Hardcover request rejected, retrying', {
+          label: 'Hardcover',
+          status,
+          attempt: attempt + 1,
+          delayMs: Math.round(delay),
+        });
+        pauseRequests(delay);
+        config.hardcoverRetries = attempt + 1;
+        return this.axios.request(config);
       }
     );
   }
