@@ -1,4 +1,5 @@
 import ExternalAPI from '@server/api/externalapi';
+import { Batcher } from '@server/api/hardcover/batcher';
 import {
   AUTHOR,
   BOOK,
@@ -6,14 +7,14 @@ import {
   SERIES,
   VALID_BOOK_HEADERS,
 } from '@server/api/hardcover/constants';
+import { TokenBucket } from '@server/api/hardcover/tokenBucket';
 import cacheManager from '@server/lib/cache';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
-import type { AxiosError, AxiosRequestConfig } from 'axios';
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 import type {
   AuthorByPKResponse,
-  BookByPKResponse,
   BookResponse,
   Books,
   BookTrendingResponse,
@@ -38,32 +39,37 @@ interface SearchOptions {
   page?: number;
 }
 
-// Hardcover rate limits per API token, but each `new Hardcover()` gets its own
-// axios instance, so throttling has to live at module level to be shared.
-const MIN_REQUEST_INTERVAL_MS = 250;
+// Hardcover's free plan allows bursts of 10 requests and refills 1 per second.
+// Each top-level GraphQL field costs one token, however much it returns.
+// https://docs.hardcover.app/api/getting-started/
+const RATE_LIMIT_BURST = 10;
+const RATE_LIMIT_REFILL_PER_SECOND = 1;
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
 const MAX_RETRY_DELAY_MS = 10000;
 const RETRYABLE_STATUSES = [429, 502, 503, 504];
+const DETAIL_CACHE_TTL_SECONDS = 21600;
+const BOOK_BATCH_WINDOW_MS = 50;
+const BOOK_BATCH_MAX_SIZE = 25;
 
-let nextRequestSlot = 0;
+// Every `new Hardcover()` has its own axios instance, so the limiter has to be
+// shared at module level to cover all of them.
+export const hardcoverRateLimiter = new TokenBucket(
+  RATE_LIMIT_BURST,
+  RATE_LIMIT_REFILL_PER_SECOND
+);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Reserves the next free slot synchronously, so concurrent callers queue up
-// in order, then waits for it.
-const waitForRequestSlot = async (): Promise<void> => {
-  const now = Date.now();
-  const slot = Math.max(now, nextRequestSlot);
-  nextRequestSlot = slot + MIN_REQUEST_INTERVAL_MS;
-  if (slot > now) {
-    await sleep(slot - now);
+const syncRateLimit = (headers: AxiosResponse['headers'] | undefined): void => {
+  if (!headers) {
+    return;
   }
-};
-
-// Delays every queued request, not just the one that was rejected.
-const pauseRequests = (ms: number): void => {
-  nextRequestSlot = Math.max(nextRequestSlot, Date.now() + ms);
+  const remaining = Number(headers['x-ratelimit-remaining']);
+  const limit = Number(headers['x-ratelimit-limit']);
+  if (Number.isFinite(remaining)) {
+    hardcoverRateLimiter.sync(remaining, limit);
+  }
 };
 
 const getRetryDelay = (error: AxiosError, attempt: number): number => {
@@ -78,6 +84,20 @@ const getRetryDelay = (error: AxiosError, attempt: number): number => {
 type RetryableRequestConfig = AxiosRequestConfig & {
   hardcoverRetries?: number;
 };
+
+interface BooksDetailsResponse {
+  data: { books: HardcoverBookDetails[] };
+}
+
+const bookCacheKey = (bookId: number) => `hardcover:book:${bookId}`;
+
+// Book cards on a page each ask for their own details at the same moment.
+// Coalescing them into one `books(where: {id: {_in: ...}})` query costs one
+// rate limit token instead of one per book.
+const bookBatcher = new Batcher<number, HardcoverBookDetails>(
+  (bookIds) => new Hardcover().fetchBookDetails(bookIds),
+  { windowMs: BOOK_BATCH_WINDOW_MS, maxBatchSize: BOOK_BATCH_MAX_SIZE }
+);
 
 export const getHeader = (tags: Tags): string | null => {
   if (!tags.Genre?.length) {
@@ -108,12 +128,19 @@ class Hardcover extends ExternalAPI {
     );
 
     this.axios.interceptors.request.use(async (config) => {
-      await waitForRequestSlot();
+      const wait = hardcoverRateLimiter.reserve();
+      if (wait > 0) {
+        await sleep(wait);
+      }
       return config;
     });
     this.axios.interceptors.response.use(
-      undefined,
+      (response) => {
+        syncRateLimit(response.headers);
+        return response;
+      },
       async (error: AxiosError) => {
+        syncRateLimit(error.response?.headers);
         const config = error.config as RetryableRequestConfig | undefined;
         const status = error.response?.status;
         if (!config || !status || !RETRYABLE_STATUSES.includes(status)) {
@@ -137,7 +164,7 @@ class Hardcover extends ExternalAPI {
           attempt: attempt + 1,
           delayMs: Math.round(delay),
         });
-        pauseRequests(delay);
+        hardcoverRateLimiter.blockFor(delay);
         config.hardcoverRetries = attempt + 1;
         return this.axios.request(config);
       }
@@ -288,8 +315,10 @@ class Hardcover extends ExternalAPI {
     authorId: number
   ): Promise<HardcoverAuthorDetails> => {
     try {
-      const data = await this.post<AuthorByPKResponse>('/', {
-        query: `
+      const data = await this.post<AuthorByPKResponse>(
+        '/',
+        {
+          query: `
           query Authors_by_pk($authorId: Int!) {
             authors_by_pk(id: $authorId) {
               ${AUTHOR}
@@ -305,10 +334,13 @@ class Hardcover extends ExternalAPI {
             }
           }
         `,
-        variables: {
-          authorId,
+          variables: {
+            authorId,
+          },
         },
-      });
+        undefined,
+        DETAIL_CACHE_TTL_SECONDS
+      );
 
       return data.data.authors_by_pk;
     } catch (e) {
@@ -346,11 +378,29 @@ class Hardcover extends ExternalAPI {
   };
 
   public getBook = async (bookId: number): Promise<HardcoverBookDetails> => {
+    const cache = cacheManager.getCache('hardcover').data;
+    const cached = cache.get<HardcoverBookDetails>(bookCacheKey(bookId));
+    if (cached) {
+      return cached;
+    }
+
     try {
-      const data = await this.post<BookByPKResponse>('/', {
+      return await bookBatcher.load(bookId);
+    } catch (e) {
+      throw new Error(`[HARDCOVER] Failed to fetch book details: ${e.message}`);
+    }
+  };
+
+  // Fetches several books in one request. Used by the batcher behind getBook.
+  public fetchBookDetails = async (
+    bookIds: number[]
+  ): Promise<Map<number, HardcoverBookDetails>> => {
+    const data = await this.post<BooksDetailsResponse>(
+      '/',
+      {
         query: `
-        query Books($bookId: Int!) {
-          books_by_pk(id: $bookId ) {
+        query Books($bookIds: [Int!]!) {
+          books(where: {id: {_in: $bookIds}}) {
             ${BOOK}
             contributions(order_by: {author: {users_count: desc}}, where: {_or: [{contribution: {_is_null: true}}, {contribution: {_nin: ["Narrator", "Translator", "Illustrator"]}}]}) {
               author {
@@ -368,20 +418,28 @@ class Hardcover extends ExternalAPI {
         }
         `,
         variables: {
-          bookId,
+          bookIds,
         },
-      });
+      },
+      undefined,
+      0
+    );
 
-      return data.data.books_by_pk;
-    } catch (e) {
-      throw new Error(`[HARDCOVER] Failed to fetch book details: ${e.message}`);
+    const cache = cacheManager.getCache('hardcover').data;
+    const books = new Map<number, HardcoverBookDetails>();
+    for (const book of data.data.books) {
+      books.set(book.id, book);
+      cache.set(bookCacheKey(book.id), book, DETAIL_CACHE_TTL_SECONDS);
     }
+    return books;
   };
 
   public getSeries = async (seriesId: number): Promise<HardcoverSeries> => {
     try {
-      const data = await this.post<SeriesByPKResponse>('/', {
-        query: `
+      const data = await this.post<SeriesByPKResponse>(
+        '/',
+        {
+          query: `
           query Series($seriesId: Int!) {
             series_by_pk(id: $seriesId) {
               id
@@ -403,10 +461,13 @@ class Hardcover extends ExternalAPI {
             }
           }
         `,
-        variables: {
-          seriesId,
+          variables: {
+            seriesId,
+          },
         },
-      });
+        undefined,
+        DETAIL_CACHE_TTL_SECONDS
+      );
 
       return data.data.series_by_pk;
     } catch (e) {
